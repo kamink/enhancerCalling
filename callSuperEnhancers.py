@@ -27,30 +27,63 @@ def excludePromoters(windowSize):
 #   print exclusionWindow[1]
 #   print exclusionWindow[2]
 #   print exclusionWindow[len(exclusionWindow)-1]
-   promoter = 0 
-   enhancer = 1 
-   promoterChr = ''
-   promoterStart = 0
-   promoterEnd = 0
-   while promoter < len(exclusionWindow):
-       promoterChr = exclusionWindow[promoter][0]
-       promoterStart = exclusionWindow[promoter][1]
-       promoterEnd = exclusionWindow[promoter][2]
-       enhancer = 0 
-       while enhancer < len(croppedMatrix)-1:
-           if(promoterChr == croppedMatrix[enhancer][0] and int(croppedMatrix[enhancer][1])>=promoterStart and int(croppedMatrix[enhancer][2])<=promoterEnd):
+   promoter = len(exclusionWindow)-1 
+   enhancer = len(croppedMatrix)-1 
+   originalEnhancerSize = len(croppedMatrix) 
+   enhancerChr = ''
+   enhancerStart = 0
+   enhancerEnd = 0
+   reachedChromosome = 0
+   passedChromosome = 0
+   switchDirection = 0
+   while enhancer > 0:
+       enhancerChr = croppedMatrix[enhancer][0]
+       enhancerStart = int(croppedMatrix[enhancer][1])
+       enhancerEnd = int(croppedMatrix[enhancer][2])
+       promoter = len(exclusionWindow)-1 
+       reachedChromosome = 0
+       if enhancer < originalEnhancerSize/2:
+           switchDirection = 1
+       while promoter >= 1 and ~switchDirection:
+           if(enhancerChr == exclusionWindow[promoter][0]):
+               reachedChromosome = 1
+           if(reachedChromosome and enhancerChr != exclusionWindow[promoter][0]):
+               break
+           if(enhancerChr == exclusionWindow[promoter][0] and enhancerStart>=exclusionWindow[promoter][1] and enhancerEnd<=exclusionWindow[promoter][2]):
               print 'Removing row ', enhancer
-              excludedPromoters.append(croppedMatrix.pop(enhancer)) 
-           enhancer+=1
-           if(promoterChr == croppedMatrix[enhancer][0] and int(croppedMatrix[enhancer][1])>=promoterStart and int(croppedMatrix[enhancer][2])<=promoterEnd):
+              excludedPromoters.append(croppedMatrix.pop()) 
+              break
+           promoter-=1
+           if(enhancerChr == exclusionWindow[promoter][0] and enhancerStart>=exclusionWindow[promoter][1] and enhancerEnd<=exclusionWindow[promoter][2]):
               print 'Removing row ', enhancer
-              excludedPromoters.append(croppedMatrix.pop(enhancer)) 
-           enhancer+=1
-       if enhancer < len(croppedMatrix):
-           if(promoterChr == croppedMatrix[enhancer][0] and int(croppedMatrix[enhancer][1])>=promoterStart and int(croppedMatrix[enhancer][2])<=promoterEnd):
+              excludedPromoters.append(croppedMatrix.pop()) 
+              break
+           promoter-=1
+       if promoter == 0 and ~switchDirection:
+           if(enhancerChr == exclusionWindow[promoter][0] and enhancerStart>=exclusionWindow[promoter][1] and enhancerEnd<=exclusionWindow[promoter][2]):
               print 'Removing row ', enhancer
-              excludedPromoters.append(croppedMatrix.pop(enhancer)) 
-       promoter+=1
+              excludedPromoters.append(croppedMatrix.pop()) 
+       while promoter < len(exclusionWindow)-1 and switchDirection:
+           if(enhancerChr == exclusionWindow[promoter][0]):
+               reachedChromosome = 1
+           if(reachedChromosome and enhancerChr != exclusionWindow[promoter][0]):
+               break
+           if(enhancerChr == exclusionWindow[promoter][0] and enhancerStart>=exclusionWindow[promoter][1] and enhancerEnd<=exclusionWindow[promoter][2]):
+              print 'Removing row ', enhancer
+              excludedPromoters.append(croppedMatrix.pop()) 
+              break
+           promoter+=1
+           if(enhancerChr == exclusionWindow[promoter][0] and enhancerStart>=exclusionWindow[promoter][1] and enhancerEnd<=exclusionWindow[promoter][2]):
+              print 'Removing row ', enhancer
+              excludedPromoters.append(croppedMatrix.pop()) 
+              break
+           promoter+=1
+       if promoter == len(exclusionWindow)-1 and switchDirection:
+           if(enhancerChr == exclusionWindow[promoter][0] and enhancerStart>=exclusionWindow[promoter][1] and enhancerEnd<=exclusionWindow[promoter][2]):
+              print 'Removing row ', enhancer
+              excludedPromoters.append(croppedMatrix.pop()) 
+       enhancer -= 1
+
 #merges enhancers within mergeDistance
 def mergeEnhancers(mergeDistance):
    global chrCol 
@@ -88,6 +121,8 @@ def main(argv):
    inputFile = ''
    global genomeFile
    genomeFile = ''
+   global outputLocation
+   outputLocation = ''
    global array
    array = []
    global matrix
@@ -101,18 +136,20 @@ def main(argv):
    global excludedPromoters 
    excludedPromoters = []
    try:
-      opts, args = getopt.getopt(argv,"",["sourceFile=","excludeTSS="])
+      opts, args = getopt.getopt(argv,"",["sourceFile=","excludeTSS=","outputLocation="])
    except getopt.GetoptError:
-      print 'Syntax Error. Syntax: \ncallSuperEnhancers.py --sourceFile <csvFile> --excludeTSS <genomeFile>)'
+      print 'Syntax Error. Syntax: \ncallSuperEnhancers.py --sourceFile <csvFile> --excludeTSS <genomeFile> --outputLocation <outputDirectory>)'
       sys.exit(2)
    for opt, arg in opts:
       if opt in ('--sourceFile'):
          inputFile = arg
       elif opt in ('--excludeTSS'):
          genomeFile = arg
+      elif opt in ('--outputLocation'):
+         outputLocation = arg
    print 'Input file is ', inputFile 
    print 'Genome file is ', genomeFile 
-
+   print 'Output Location is ',outputLocation
   #open source file and store as array in croppedMatrix (only chromosomal data)
    with open(inputFile, 'rb') as enhancerPeaksAndTags:
         counter = 0
@@ -143,16 +180,21 @@ def main(argv):
    print genomeMatrix[len(genomeMatrix)-1]
  
    excludePromoters(2000)
-
+   stringFragments = []
   #print output as bed  file
    reFormString = '' 
-   index = 0
    reFormString = inputFile.replace('.xls','')
-
-   with open(reFormString + '_tagsExtracted.bed', 'a') as outputEnhancers:
+   stringFragments = reFormString.rpartition('/') 
+   reFormString = stringFragments[2]
+   with open(outputLocation + reFormString + '_tagsExtracted.bed', 'a') as outputEnhancers:
        enhancerPrinter = csv.writer(outputEnhancers, delimiter = '\t')
        for i in range(1,len(croppedMatrix)):
             enhancerPrinter.writerow(croppedMatrix[i])
+
+   with open(outputLocation + reFormString + '_removedEnhancers.bed', 'a') as outputEnhancers:
+       enhancerPrinter = csv.writer(outputEnhancers, delimiter = '\t')
+       for i in range(1,len(excludedPromoters)):
+            enhancerPrinter.writerow(excludedPromoters[i])
 
 if __name__ == "__main__":
    main(sys.argv[1:])
