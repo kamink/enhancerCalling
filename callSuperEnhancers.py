@@ -145,17 +145,9 @@ def main(argv):
    excludePromoters(2000)
 
   #print output as bed  file
-   inputParse = inputFile.split('.')
-   print 'Length of input parse ', len(inputParse)
    reFormString = '' 
    index = 0
-  
-   while index < (len(inputParse)-1):
-       if(inputParse[index] == ''):
-           reFormString = reFormString + '.'
-       else:
-           reFormString = reFormString + inputParse[index]
-       index += 1
+   reFormString = inputFile.replace('.xls','')
 
    with open(reFormString + '_tagsExtracted.bed', 'a') as outputEnhancers:
        enhancerPrinter = csv.writer(outputEnhancers, delimiter = '\t')
